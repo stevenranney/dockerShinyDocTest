@@ -31,6 +31,9 @@ shinyUI(fluidPage(
       numericInput("n", 
                    label = h4("Number of values to generate"),
                    value = 1000),
+      textInput("client", 
+                label = h4("Test for spaces issues"), 
+                value = "Test client"),
       downloadButton("generate", "Generate Report", #icon = icon("file"), 
                      style = "color: #fff; background-color: #337ab7; border-color: #2e6da4")
       ),
