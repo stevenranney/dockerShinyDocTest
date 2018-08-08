@@ -1,0 +1,66 @@
+\mode<presentation>
+
+% Requirement
+\RequirePackage{tikz}
+
+% %Settings - Load the themes
+\useinnertheme{SwCustom}
+\useoutertheme{SwCustom}
+\usecolortheme{SwCustom}
+
+
+% Theme Items
+\setbeamertemplate{navigation symbols}{} %Remove Navigation symbols
+\setbeamertemplate{blocks}[rounded][shadow = false] % Define the blocks aspect
+\setbeamertemplate{items}[square]
+%\setbeamertemplate{sections/subsections in toc}[square]
+
+% Autopopulate date
+\date{\today}
+
+
+% SET THE ACTUAL THEMES
+
+%background for title slide
+\pgfdeclareimage[interpolate=true,width=\paperwidth,height=\paperheight]{logo}{staywell_title_background}
+
+%background for running slides
+\pgfdeclareimage[interpolate=true,width=\paperwidth,height=\paperheight]{logo2}{running_slide}
+
+% GENERAL SLIDE BACKGROUNDS
+\setbeamertemplate{background}{
+  \begin{tikzpicture}
+   \useasboundingbox (0,0) rectangle (\the\paperwidth,\the\paperheight); 
+    \pgftext[at=\pgfpoint{0}{0},left,base]{\pgfuseimage{logo}};
+   \ifnum\thepage>1\relax%
+   \useasboundingbox (0,0) rectangle (\the\paperwidth,\the\paperheight); 
+    \pgftext[at=\pgfpoint{0}{0},left,base]{\pgfuseimage{logo2}};
+  \fi
+  \end{tikzpicture}
+}
+
+% FOOTERS - only shown on pages 2-N
+%Set the `author' to be included in the footer
+\author{\copyright\hspace*{.5em}\the\year\hspace*{.5em}The Staywell Company, LLC. All Rights Reserved.}	
+% set the `institute' to be included in the footer
+\institute{Confidential}	
+	
+\setbeamertemplate{footline}
+{
+\ifnum\thepage>1\relax%
+  \leavevmode%
+  \hbox{%
+  \begin{beamercolorbox}[wd=.4\paperwidth,ht=.5ex,dp=1.5ex,center]{running text}%
+    \usebeamerfont{author in head/foot}\insertshortauthor
+  \end{beamercolorbox}%
+  \begin{beamercolorbox}[wd=.4\paperwidth,ht=.5ex,dp=1.5ex,center]{running text}%
+    \usebeamerfont{title in head/foot}\insertshortinstitute\hspace*{.5em}
+    \insertframenumber{}/\inserttotalframenumber\hspace*{1ex}
+  \end{beamercolorbox}}%
+  \vskip0pt%
+\fi
+}	
+
+
+
+\mode<all>

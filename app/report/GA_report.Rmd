@@ -1,0 +1,288 @@
+---
+output: 
+  beamer_presentation:
+    theme: "SwCustom"
+title: "`r paste0('Draft report: ', params$client)`"
+date: "`r Sys.Date()`"
+toc: FALSE
+classoption: aspectratio=169
+editor_options: 
+  chunk_output_type: console
+params:
+  data: NA
+  client: NA
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  comment = NA,
+  fig.width = 14.22,
+  fig.height = 8,
+  fig.path = "figure/",
+  out.width = "1.422\\textheight",
+  out.height = ".8\\textheight",
+  fig.align = "center",
+  dpi = 600,
+  results = "hide",
+  error = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  echo = FALSE,
+  dev = "CairoPNG"
+)
+
+library(dplyr)
+library(scales)
+library(ggplot2)
+library(reshape2)
+library(knitr)
+library(Cairo)
+
+dat <- 
+  params$data %>%
+  left_join(read.csv("../data/client_keys_2018_07_10.csv", header = TRUE, fileEncoding = "UTF-8-BOM"), 
+            by= c("client_key" = "client_key"))
+
+sw_green <- "#81bc00"
+sw_purple <- "#410099"
+
+```
+
+## Analytics Notes
+
+This is just a test report, designed to start the discussion about what we could show in a Google Analytics specific report for any given client. Here, I've used `r dat$client_name %>% unique()` as a test client.
+
+**This is for internal use and discussion only.**
+
+## Scope
+
+* Client: `r dat$client_name %>% unique()`
+    * Program: `r dat$program %>% unique()`
+* Dates: `r min(dat$date)` to `r max(dat$date)`
+* *N* rows: `r nrow(dat) %>% comma()`
+* Total new users: `r sum(dat$newUsers) %>% comma()`
+* Total sessions: `r sum(dat$sessions) %>% comma()`
+* Average session length (min): `r (dat %>% filter(avg_session_duration_min > 0) %>% select(avg_session_duration_min) %>% summarize(xbar = mean(avg_session_duration_min)) %>% select(xbar) %>% first()) %>% round(1)`
+
+## Google Analytics 
+
+* `session` = A session is a group of user-page interactions that take place within a given time frame. A single session can contain multiple page views but will last no more than 30 minutes. 
+    * if a user visits only *one page* during their session, Google Analytics considers the duration of that session as 0 minutes
+* `new user` = User visiting site for the first time, identified by a Google Analytics "cookie"
+
+## Daily users
+
+```{r daily-users, echo = FALSE}
+
+dat %>% 
+  select(date, newUsers, existing_users) %>%
+  melt(measure.vars = c("newUsers", "existing_users"), 
+       variable.name = "user_type") %>%
+  group_by(date, user_type) %>%
+  summarize(tot_users = sum(value)) %>%
+  ggplot(aes(x = date, y = tot_users, colour = user_type)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(se = FALSE) +
+  scale_colour_manual(name = "User type", labels = c("New", "Existing"), 
+                      values = c(sw_green, sw_purple)) +
+  scale_y_continuous(labels = comma) +
+  labs(x = "Date", y = "Total users") +
+  theme(legend.position ="bottom")
+
+```
+
+## Daily users, day of week
+
+```{r daily-users-day-of-week, echo = FALSE}
+
+dat %>% 
+  select(day_of_week, newUsers, existing_users) %>%
+  melt(measure.vars = c("newUsers", "existing_users"), 
+       variable.name = "user_type") %>%
+  group_by(day_of_week, user_type) %>%
+  summarize(n_users = sum(value)) %>%
+  arrange(user_type, day_of_week) %>%
+  group_by(user_type) %>%
+  mutate(prop = n_users/sum(n_users)) %>%
+  ggplot(aes(x = day_of_week, y = prop, fill = user_type)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_y_continuous(labels = percent) +
+  labs(x = "Day of week", y = "Percent of users") +
+  scale_fill_manual(name = "User type", labels = c("New", "Existing"), values = c(sw_green, sw_purple)) +
+  theme(legend.position = "bottom")
+
+
+```
+
+## Hourly users
+
+```{r hourly-users, echo = FALSE}
+
+dat %>%
+  group_by(hour) %>%
+  summarize(tot_users = sum(users)) %>%
+  mutate(prop = tot_users/sum(tot_users)) %>%
+  ggplot(aes(x = hour, y = prop)) +
+  geom_bar(stat = "identity", fill = sw_green) +
+  scale_y_continuous(labels = percent) +
+  labs(x = "Hour of day (24-hr)", y = "Percent of total users")
+
+```
+
+## Daily sessions, all users
+
+```{r daily-ses, echo = FALSE}
+
+dat %>%  
+  group_by(date) %>%
+  summarize(tot_sessions = sum(sessions)) %>%
+  ggplot(aes(x = date, y = tot_sessions)) +
+  geom_point(alpha = 0.5, color = sw_purple) +
+  geom_smooth(se = FALSE, color = sw_purple) +
+  scale_y_continuous(labels = comma) +
+  labs(x = "Date", y = "Total sessions") 
+
+```
+
+## Cumulative sessions
+
+
+```{r cum-session, echo = FALSE}
+
+dat %>%  
+  group_by(date) %>%
+  summarize(tot_sessions = sum(sessions)) %>%
+  arrange(date) %>%
+  mutate(cum_sess = cumsum(tot_sessions)) %>%
+  ggplot(aes(x = date, y = cum_sess)) +
+  geom_line(color = sw_purple, lwd = 1) +
+  scale_y_continuous(labels = comma) +
+  labs(x = "Date", y = "Total sessions") 
+
+```
+
+## Average session length, day of week
+
+```{r daily-ses-day-of-week, echo = FALSE, results = 'asis'}
+
+dat %>%
+  group_by(day_of_week) %>%
+  filter(avg_session_duration_min > 0) %>%
+  summarise(avg_session_duration_min = sum(avg_session_duration_min)/n()) %>%
+  mutate(avg_session_duration_min = avg_session_duration_min %>% round(1)) %>%
+  rename(Day = day_of_week, 
+         `Mean session duration (min)` = avg_session_duration_min) %>% 
+  kable()
+
+
+```
+
+## Average session length by hour 
+
+```{r session-length-hour, echo = FALSE}
+
+dat %>%
+  group_by(hour) %>%
+  filter(avg_session_duration_min > 0) %>%
+  summarise(avg_session_duration_min = sum(avg_session_duration_min)/n(), 
+            users = sum(users)) %>%
+  ggplot(aes(x = hour, y = avg_session_duration_min)) +
+  geom_bar(stat = "identity", fill = sw_green) +
+  labs(x = "Hour of day (24-hr)", y = "Average session duration (min)")
+
+
+```
+
+## Hourly sessions
+
+```{r hourly-ses, echo = FALSE}
+
+dat %>%
+  group_by(hour) %>%
+  summarize(tot_sessions = sum(sessions)) %>%
+  mutate(prop = tot_sessions/sum(tot_sessions)) %>%
+  ggplot(aes(x = hour, y = prop)) +
+  geom_bar(stat = "identity", fill = sw_green) +
+  scale_y_continuous(labels = percent) +
+  labs(x = "Hour of day (24-hr)", y = "Percent of total sessions")
+
+```
+
+## Sessions/user, date
+
+```{r hourly-ses-user, echo = FALSE}
+
+dat %>%
+  group_by(date) %>%
+  summarize(tot_users = sum(users), 
+            tot_ses = sum(sessions)) %>%
+  mutate(ses_per_user = tot_ses/tot_users) %>%
+  ggplot(aes(x = date, y = ses_per_user)) +
+  geom_point(alpha = 0.5, color = sw_purple) +
+  geom_smooth(se = FALSE, color = sw_purple) +
+  scale_y_continuous(labels = comma) +
+  labs(x = "Date", y = "Sessions/user") 
+
+```
+
+## Page views
+
+```{r daily-pageviews, echo = FALSE}
+
+dat %>% 
+  group_by(date) %>%
+  summarize(page_views = sum(uniquePageViews)) %>%
+  ggplot(aes(x = date, y = page_views)) +
+  geom_point(alpha = 0.5, col = sw_purple) +
+  geom_smooth(se = FALSE, col = sw_purple) +
+  scale_y_continuous(labels = comma) +
+  labs(x = "Date", y = "Total unique page views")
+
+```
+
+## Cumulative page views
+
+```{r cumsum-pageviews, echo = FALSE}
+
+dat %>% 
+  group_by(date) %>%
+  summarize(page_views = sum(uniquePageViews)) %>%
+  arrange(date) %>%
+  mutate(cumsum = cumsum(page_views)) %>%
+  ggplot(aes(x = date, y = cumsum)) +
+  geom_line(col = sw_purple, lwd = 1) +
+  scale_y_continuous(labels = comma) +
+  labs(x = "Date", y = "Total page views")
+
+```
+
+
+## Page views, day of week
+
+```{r pageviews-day-of-week, echo = FALSE}
+
+dat %>% 
+  group_by(day_of_week) %>%
+  summarize(page_views = sum(uniquePageViews)) %>%
+  mutate(prop = page_views/sum(page_views)) %>%
+  ggplot(aes(x = day_of_week, y = prop)) +
+  geom_bar(stat = "identity", fill = sw_green) +
+  scale_y_continuous(labels = percent) +
+  labs(x = "Day of week", y = "Percent of page views")
+
+```
+
+## Unique page views/hour
+
+```{r hourly-pageviews, echo = FALSE}
+
+dat %>%
+  group_by(hour) %>%
+  summarize(page_views = sum(uniquePageViews)) %>%
+  mutate(prop = page_views/sum(page_views)) %>%
+  ggplot(aes(x = hour, y = prop)) +
+  geom_bar(stat = "identity", fill = sw_green) +
+  scale_y_continuous(labels = percent) +
+  labs(x = "Hour of day (24-hr)", y = "Percent of page views")
+
+```

@@ -1,0 +1,21 @@
+
+\mode<presentation>
+
+
+% Title page
+\defbeamertemplate*{title page}{SwCustom}[1][]
+{
+	\vskip7.cm%
+		\begin{beamercolorbox}[wd=12cm, leftskip=0.0025cm, sep=8pt, #1]{title page header}
+			\usebeamerfont{title}\inserttitle\par%
+		\end{beamercolorbox}%
+		
+	\vskip0.10cm%
+		\begin{beamercolorbox}[wd=12cm, leftskip=0.0025cm, sep=8pt, #1]{title page header}
+			\usebeamerfont{date}\insertdate\par%
+		\end{beamercolorbox}%
+		
+	\vfil
+}
+
+\mode<all>
